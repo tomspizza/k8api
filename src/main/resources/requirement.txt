@@ -1,0 +1,35 @@
+Story
+Assume I want to deploy my services on K8, But I dont know much about K8 and does not like to deal with the complexities of K8.
+Therefore I need few rest APIs which wraps K8 APIs so that I can easily, deploy/delete/list/scale and call my deployed services on K8
+
+API Details
+POST /k8/ingress/create - Optional, I don't need this, but you may be putting ur effort on this
+POST /k8/deploy   {"image": "test.azurecr.io/integration/raspberry-service:1.0", "namespace":"test", servicename":"raspberry-service"} => 200 OK | Error Code + Description
+POST /k8/delete   {"namespace":"test", "servicename":"raspberry-service"} -> 200 OK | Error Description
+GET  /k8/list =>  Array of these {"namespace":"test", "servicename":"raspberry-service", "Serciceurl" : "123.214.45.12:8080/service1/", "image": "test.azurecr.io/integration/raspberry-service:1.0", "uptime":5 , "deployed"="20210809", "state": "running|stoped|crashed", "logs": "path/to/find/logs", "metadata":"any valuable data related to pods like cup, mem,disk usage"}
+POST /k8/scale {"namespace":"test", "servicename":"raspberry-service", "numberofreplicas"="1|2|3"}   validate 0< numberofreplicas < 10 
+
+Deploy
+When I call deploy fir the first time it should deploy the service via ingress
+When i call deploy afterwords, it should not be creating new ingresses, but update the previous ingress to add the relevant configs
+I should be able to call my services through ingress ip
+GET/POST http://ingress-ip/myserivce1/my/service1/paths
+GET/POST http://ingress-ip/myserivce2/my/other/service2/paths
+
+Delete
+When a service is deleted, it should delete all other kubernetes resources associated with that, should update the ingress entries too
+
+List
+List should list the a json array of already deployed services, each array item should represent a service.
+Should return as much information as possible, Its state, uptime, pod details, image details, scale details (num of replicas), and how to locate that service (ingress url for this)
+
+Scale
+I should be able to scale up/down
+
+Development expectations
+Should use Spring boot + java, maven
+No scripting or process calls should be used
+Need to use the K8 java API, https://medium.com/swlh/how-to-create-kubernetes-objects-using-kubernetes-api-1baea18f54c1 is a sample
+API's should be blocking to provide me the results of API invocation, where it was success or failed
+If success it should return 200 OK, if fails should give me details of failure in the status message
+You may suggest any valuable ideas of ur expertise and I'm open to do minor changes
