@@ -6,7 +6,7 @@ API Details
 POST /k8/ingress/create - Optional, I don't need this, but you may be putting ur effort on this
 POST /k8/deploy   {"image": "test.azurecr.io/integration/raspberry-service:1.0", "namespace":"test", servicename":"raspberry-service"} => 200 OK | Error Code + Description
 POST /k8/delete   {"namespace":"test", "servicename":"raspberry-service"} -> 200 OK | Error Description
-GET  /k8/list =>  Array of these {"namespace":"test", "servicename":"raspberry-service", "Serciceurl" : "123.214.45.12:8080/service1/", "image": "test.azurecr.io/integration/raspberry-service:1.0", "uptime":5 , "deployed"="20210809", "state": "running|stoped|crashed", "logs": "path/to/find/logs", "metadata":"any valuable data related to pods like cup, mem,disk usage"}
+GET  /k8/list =>  Array of these {"namespace":"test", "servicename":"raspberry-service", "Serciceurl" : "123.214.45.12:8080/service1/", "image": "test.azurecr.io/integration/raspberry-service:1.0", "uptime":5 , "deployed"="20210809", "state": "running|stopped|crashed", "logs": "path/to/find/logs", "metadata":"any valuable data related to pods like cpu, mem, disk usage"}
 POST /k8/scale {"namespace":"test", "servicename":"raspberry-service", "numberofreplicas"="1|2|3"}   validate 0< numberofreplicas < 10 
 
 Deploy
@@ -33,3 +33,6 @@ Need to use the K8 java API, https://medium.com/swlh/how-to-create-kubernetes-ob
 API's should be blocking to provide me the results of API invocation, where it was success or failed
 If success it should return 200 OK, if fails should give me details of failure in the status message
 You may suggest any valuable ideas of ur expertise and I'm open to do minor changes
+
+
+https://github.com/fabric8io/kubernetes-client/blob/master/doc/CHEATSHEET.md
