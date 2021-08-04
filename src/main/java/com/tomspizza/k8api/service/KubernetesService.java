@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Component
 public class KubernetesService {
 
-    private static final int MIN_POD = 0;
+    private static final int MIN_POD = 1;
     private static final int MAX_POD = 10;
 
     private final KubernetesRepository kubernetesRepository;
@@ -29,7 +29,13 @@ public class KubernetesService {
     }
 
     public void deploy(DeployDto deployDto) {
-        kubernetesRepository.deploy(deployDto.getNamespace(), deployDto.getServiceName(), deployDto.getImage());
+        kubernetesRepository.deploy(deployDto.getNamespace(),
+                deployDto.getServiceName(),
+                deployDto.getImage(),
+                deployDto.getServicePort());
+
+        kubernetesRepository.register2Ingress(deployDto.getServiceName(),
+                deployDto.getServicePort());
     }
 
     public void scale(ScaleDto scaleDto) {
@@ -42,5 +48,6 @@ public class KubernetesService {
 
     public void delete(K8sDto k8sDto) {
         kubernetesRepository.delete(k8sDto.getNamespace(), k8sDto.getServiceName());
+        kubernetesRepository.unregister2Ingress(k8sDto.getServiceName());
     }
 }

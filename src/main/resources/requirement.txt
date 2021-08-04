@@ -1,5 +1,5 @@
 Story
-Assume I want to deploy my services on K8, But I dont know much about K8 and does not like to deal with the complexities of K8.
+Assume I want to deploy my services on K8, But I don't know much about K8 and does not like to deal with the complexities of K8.
 Therefore I need few rest APIs which wraps K8 APIs so that I can easily, deploy/delete/list/scale and call my deployed services on K8
 
 API Details

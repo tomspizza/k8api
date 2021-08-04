@@ -9,7 +9,6 @@ import java.util.Objects;
 @Getter
 @Setter
 public class DeploymentDto extends K8sDto {
-    //    private String serviceUrl;
     private String image;
     private String deployed;
     private int replicas;

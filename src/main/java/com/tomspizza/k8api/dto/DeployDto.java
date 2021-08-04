@@ -7,4 +7,5 @@ import lombok.Setter;
 @Setter
 public class DeployDto extends K8sDto {
     private String image;
+    private int servicePort;
 }
