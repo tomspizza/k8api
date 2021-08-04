@@ -2,7 +2,11 @@
 The APIs support for deployment services to kubernetes environment.
 
 ### Prerequisite
-The project requires java version 11 for running.
+- The project requires java version 11 for running.
+- Make sure the kubernetes cluster is installed Nginx ingress controller.
+```shell
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-0.32.0/deploy/static/provider/aws/deploy.yaml
+```
 
 ### Build project
 ```shell
