@@ -23,17 +23,24 @@ public class KubernetesService {
 
     private final KubernetesRepository kubernetesRepository;
 
-    public List<DeploymentDto> getAllServices() {
+    public List<DeploymentDto> getAllDeployments() {
         var deployments = kubernetesRepository.getDeployments();
         return deployments.stream().map(DeploymentDto::new).collect(Collectors.toList());
     }
 
     public void deploy(DeployDto deployDto) {
-        kubernetesRepository.deploy(deployDto.getNamespace(),
+        log.info("Deploying pod");
+        kubernetesRepository.deployDeployment(deployDto.getNamespace(),
                 deployDto.getServiceName(),
                 deployDto.getImage(),
                 deployDto.getServicePort());
 
+        log.info("Exposing to service");
+        kubernetesRepository.deployService(deployDto.getNamespace(),
+                deployDto.getServiceName(),
+                deployDto.getServicePort());
+
+        log.info("Exposing to ingress");
         kubernetesRepository.register2Ingress(deployDto.getServiceName(),
                 deployDto.getServicePort());
     }
@@ -43,11 +50,17 @@ public class KubernetesService {
         if (numberOfReplicas < MIN_POD || numberOfReplicas > MAX_POD) {
             throw new ServiceException(String.format("Number of replicas should be in %s and %s", MIN_POD, MAX_POD));
         }
-        kubernetesRepository.scale(scaleDto.getNamespace(), scaleDto.getServiceName(), numberOfReplicas);
+        kubernetesRepository.scalePod(scaleDto.getNamespace(), scaleDto.getServiceName(), numberOfReplicas);
     }
 
     public void delete(K8sDto k8sDto) {
-        kubernetesRepository.delete(k8sDto.getNamespace(), k8sDto.getServiceName());
+        log.info("Remove deployment");
+        kubernetesRepository.deleteDeployment(k8sDto.getNamespace(), k8sDto.getServiceName());
+
+        log.info("Remove service");
+        kubernetesRepository.deleteService(k8sDto.getNamespace(), k8sDto.getServiceName());
+
+        log.info("Unregister of ingress");
         kubernetesRepository.unregister2Ingress(k8sDto.getServiceName());
     }
 }

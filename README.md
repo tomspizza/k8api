@@ -4,9 +4,13 @@ The APIs support for deployment services to kubernetes environment.
 ### Prerequisite
 - The project requires java version 11 for running.
 - Make sure the kubernetes cluster is installed Nginx ingress controller.
+
+For EKS, use this command to install Nginx ingress controller
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-0.32.0/deploy/static/provider/aws/deploy.yaml
 ```
+
+For AKS: https://docs.microsoft.com/en-us/azure/aks/ingress-static-ip
 
 ### Build project
 ```shell

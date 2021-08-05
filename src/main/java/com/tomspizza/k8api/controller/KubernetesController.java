@@ -23,7 +23,7 @@ public class KubernetesController {
     @ResponseBody
     @GetMapping("/list")
     public List<DeploymentDto> list() {
-        return kubernetesService.getAllServices();
+        return kubernetesService.getAllDeployments();
     }
 
     @ResponseBody
