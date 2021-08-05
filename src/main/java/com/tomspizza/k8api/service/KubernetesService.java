@@ -6,6 +6,7 @@ import com.tomspizza.k8api.dto.K8sDto;
 import com.tomspizza.k8api.dto.ScaleDto;
 import com.tomspizza.k8api.exception.ServiceException;
 import com.tomspizza.k8api.repository.KubernetesRepository;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,7 @@ public class KubernetesService {
     private final KubernetesRepository kubernetesRepository;
 
     public List<DeploymentDto> getAllDeployments() {
-        var deployments = kubernetesRepository.getDeployments();
+        List<Deployment> deployments = kubernetesRepository.getDeployments();
         return deployments.stream().map(DeploymentDto::new).collect(Collectors.toList());
     }
 
@@ -47,7 +48,7 @@ public class KubernetesService {
     }
 
     public void scale(ScaleDto scaleDto) {
-        var numberOfReplicas = scaleDto.getNumberOfReplicas();
+        int numberOfReplicas = scaleDto.getNumberOfReplicas();
         if (numberOfReplicas < MIN_POD || numberOfReplicas > MAX_POD) {
             throw new ServiceException(String.format("Number of replicas should be in %s and %s", MIN_POD, MAX_POD));
         }

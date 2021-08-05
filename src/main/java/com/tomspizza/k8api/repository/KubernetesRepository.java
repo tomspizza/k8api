@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,7 +84,6 @@ public class KubernetesRepository {
         Ingress ingress = new IngressBuilder()
                 .withNewMetadata()
                     .withName(INGRESS_NAME)
-//                    .addToAnnotations("nginx.ingress.kubernetes.io/rewrite-target", "/")
                     .addToLabels(APP_LABEL, INGRESS_NAME)
                 .endMetadata()
                 .withNewSpec()
@@ -172,10 +172,13 @@ public class KubernetesRepository {
     }
 
     public void deployService(String namespace, String serviceName, int containerPort) {
-        var servicePort = new ServicePort();
+        ServicePort servicePort = new ServicePort();
         servicePort.setProtocol(DEFAULT_PROTOCOL);
         servicePort.setPort(SERVICE_PORT);
         servicePort.setTargetPort(new IntOrString(containerPort));
+
+        Map<String, String> selectors = new HashMap<>();
+        selectors.put(APP_LABEL, serviceName);
 
         Service service = new ServiceBuilder()
                 .withNewMetadata()
@@ -183,7 +186,7 @@ public class KubernetesRepository {
                     .addToLabels(APP_LABEL, serviceName)
                 .endMetadata()
                 .withNewSpec()
-                    .withSelector(Map.of(APP_LABEL, serviceName))
+                    .withSelector(selectors)
                     .withPorts(servicePort)
                 .endSpec()
                 .build();
