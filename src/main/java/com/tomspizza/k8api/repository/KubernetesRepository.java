@@ -1,12 +1,9 @@
 package com.tomspizza.k8api.repository;
 
-import io.fabric8.kubernetes.api.model.IntOrString;
-import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceBuilder;
-import io.fabric8.kubernetes.api.model.ServicePort;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
-import io.fabric8.kubernetes.api.model.networking.v1beta1.*;
+import io.fabric8.kubernetes.api.model.networking.v1.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Repository
@@ -24,15 +22,29 @@ public class KubernetesRepository {
     private static final String INGRESS_NAMESPACE = "default";
     private static final String INGRESS_NAME = "nginx-gateway";
     private static final String DEFAULT_PROTOCOL = "TCP";
+    private static final String PATH_TYPE = "Prefix";
     private static final int SERVICE_PORT = 80;
 
     private final DefaultKubernetesClient client;
+
+    public Namespace getOrCreateNamespace(String name) {
+        List<Namespace> namespaces = client.namespaces().list().getItems();
+        Optional<Namespace> optional = namespaces.stream().filter(n -> n.getMetadata().getName().equals(name)).findAny();
+        if (optional.isPresent()) {
+            return optional.get();
+        }
+
+        log.info("Create a new namespace: {}", name);
+        Namespace newNamespace = new NamespaceBuilder().withNewMetadata().withName(name).endMetadata().build();
+        client.namespaces().createOrReplace(newNamespace);
+        return newNamespace;
+    }
 
     public List<Deployment> getDeployments() {
         return client.apps().deployments().inAnyNamespace().list().getItems();
     }
 
-    public void register2Ingress(String serviceName, int servicePort) {
+    public void register2Ingress(String serviceName) {
         IngressList ingressList = getIngressList();
         List<Ingress> ingresses = ingressList.getItems();
         if (ingresses == null || ingresses.isEmpty()) {
@@ -56,11 +68,11 @@ public class KubernetesRepository {
             paths.removeIf(p -> p.getPath().equals("/" + serviceName));
             if (paths.isEmpty()) {
                 log.info("Empty path for ingress, delete ingress");
-                client.network().ingress()
+                client.network().v1().ingresses()
                         .inNamespace(INGRESS_NAMESPACE)
                         .delete(ingress);
             } else {
-                client.network().ingress()
+                client.network().v1().ingresses()
                         .inNamespace(INGRESS_NAMESPACE)
                         .createOrReplace(ingress);
             }
@@ -71,7 +83,7 @@ public class KubernetesRepository {
         Ingress ingress = new IngressBuilder()
                 .withNewMetadata()
                     .withName(INGRESS_NAME)
-                    .addToAnnotations("nginx.ingress.kubernetes.io/rewrite-target", "/")
+//                    .addToAnnotations("nginx.ingress.kubernetes.io/rewrite-target", "/")
                     .addToLabels(APP_LABEL, INGRESS_NAME)
                 .endMetadata()
                 .withNewSpec()
@@ -79,38 +91,50 @@ public class KubernetesRepository {
                         .withNewHttp()
                             .addNewPath()
                                 .withPath("/" + serviceName)
+                                .withPathType(PATH_TYPE)
                                 .withNewBackend()
-                                    .withServiceName(serviceName)
-                                    .withServicePort(new IntOrString(SERVICE_PORT))
+                                    .withNewService()
+                                        .withName(serviceName)
+                                        .withNewPort()
+                                            .withNumber(SERVICE_PORT)
+                                        .endPort()
+                                    .endService()
                                 .endBackend()
                             .endPath()
                         .endHttp()
                     .endRule()
                 .endSpec()
                 .build();
-        return client.network().ingress().inNamespace(INGRESS_NAMESPACE).createOrReplace(ingress);
+        return client.network().v1().ingresses().inNamespace(INGRESS_NAMESPACE).createOrReplace(ingress);
     }
 
     private Ingress addService2Ingress(Ingress ingress, String serviceName) {
         List<IngressRule> rules = ingress.getSpec().getRules();
         List<HTTPIngressPath> paths = rules.get(0).getHttp().getPaths();
 
-        IngressBackend newBackend = new IngressBackend();
-        newBackend.setServiceName(serviceName);
-        newBackend.setServicePort(new IntOrString(SERVICE_PORT));
+        ServiceBackendPort serviceBackendPort = new ServiceBackendPort();
+        serviceBackendPort.setNumber(SERVICE_PORT);
+
+        IngressServiceBackend ingressServiceBackend = new IngressServiceBackend();
+        ingressServiceBackend.setName(serviceName);
+        ingressServiceBackend.setPort(serviceBackendPort);
+
+        IngressBackend ingressBackend = new IngressBackend();
+        ingressBackend.setService(ingressServiceBackend);
 
         HTTPIngressPath newPath = new HTTPIngressPath();
         newPath.setPath("/" + serviceName);
-        newPath.setBackend(newBackend);
+        newPath.setPathType(PATH_TYPE);
+        newPath.setBackend(ingressBackend);
         paths.add(newPath);
 
-        return client.network().ingress()
+        return client.network().v1().ingresses()
                 .inNamespace(INGRESS_NAMESPACE)
                 .createOrReplace(ingress);
     }
 
     public IngressList getIngressList() {
-        return client.network().ingress()
+        return client.network().v1().ingresses()
                 .inNamespace(INGRESS_NAMESPACE)
                 .withLabel(APP_LABEL, INGRESS_NAME)
                 .list();

@@ -30,6 +30,8 @@ public class KubernetesService {
 
     public void deploy(DeployDto deployDto) {
         log.info("Deploying pod");
+        kubernetesRepository.getOrCreateNamespace(deployDto.getNamespace());
+
         kubernetesRepository.deployDeployment(deployDto.getNamespace(),
                 deployDto.getServiceName(),
                 deployDto.getImage(),
@@ -41,8 +43,7 @@ public class KubernetesService {
                 deployDto.getServicePort());
 
         log.info("Exposing to ingress");
-        kubernetesRepository.register2Ingress(deployDto.getServiceName(),
-                deployDto.getServicePort());
+        kubernetesRepository.register2Ingress(deployDto.getServiceName());
     }
 
     public void scale(ScaleDto scaleDto) {
