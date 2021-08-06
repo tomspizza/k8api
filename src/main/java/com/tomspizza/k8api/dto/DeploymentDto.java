@@ -18,9 +18,10 @@ public class DeploymentDto extends K8sDto {
     private String image;
     private String deployed;
     private int replicas;
+    private String url;
 
 
-    public DeploymentDto(Deployment deployment) {
+    public DeploymentDto(Deployment deployment, String url) {
         ObjectMeta metadata = deployment.getMetadata();
         setNamespace(metadata.getNamespace());
         setServiceName(metadata.getName());
@@ -30,8 +31,8 @@ public class DeploymentDto extends K8sDto {
         List<Container> containers = template.getSpec().getContainers();
         Container container = containers.get(0);
         this.image = container.getImage();
-
         this.deployed = metadata.getCreationTimestamp();
+        this.url = String.join("/", url, metadata.getName());
 
         DeploymentStatus status = deployment.getStatus();
         this.replicas = Objects.isNull(status.getReplicas()) ? 0 : status.getReplicas();

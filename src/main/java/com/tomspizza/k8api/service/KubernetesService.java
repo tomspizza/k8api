@@ -9,6 +9,7 @@ import com.tomspizza.k8api.repository.KubernetesRepository;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,11 +23,16 @@ public class KubernetesService {
     private static final int MIN_POD = 1;
     private static final int MAX_POD = 10;
 
+    @Value("${app.urlSchema}")
+    private String urlSchema;
+
     private final KubernetesRepository kubernetesRepository;
 
     public List<DeploymentDto> getAllDeployments() {
         List<Deployment> deployments = kubernetesRepository.getDeployments();
-        return deployments.stream().map(DeploymentDto::new).collect(Collectors.toList());
+        String url = kubernetesRepository.getIngressPublicUrl();
+        String uri = String.format("%s://%s", urlSchema, url);
+        return deployments.stream().map(d -> new DeploymentDto(d, uri)).collect(Collectors.toList());
     }
 
     public void deploy(DeployDto deployDto) {
@@ -35,13 +41,11 @@ public class KubernetesService {
 
         kubernetesRepository.deployDeployment(deployDto.getNamespace(),
                 deployDto.getServiceName(),
-                deployDto.getImage(),
-                deployDto.getServicePort());
+                deployDto.getImage());
 
         log.info("Exposing to service");
         kubernetesRepository.deployService(deployDto.getNamespace(),
-                deployDto.getServiceName(),
-                deployDto.getServicePort());
+                deployDto.getServiceName());
 
         log.info("Exposing to ingress");
         kubernetesRepository.register2Ingress(deployDto.getServiceName());

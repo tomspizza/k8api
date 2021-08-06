@@ -5,3 +5,12 @@ spring:
   application:
     name: k8sapi
 
+app:
+  containerPort: 8081
+  servicePort: 80
+  ingressNamespace: default
+  ingressName: nginx-gateway
+  urlSchema: http
+  nginx:
+    annotationKey: nginx.ingress.kubernetes.io/rewrite-target
+    annotationValue: /$2

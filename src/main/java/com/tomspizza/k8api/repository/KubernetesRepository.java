@@ -7,6 +7,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
@@ -19,14 +20,41 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class KubernetesRepository {
 
+    @Value("${app.containerPort}")
+    private int containerPort;
+
+    @Value("${app.ingressNamespace}")
+    private String ingressNamespace;
+
+    @Value("${app.ingressName}")
+    private String ingressName;
+
+    @Value("${app.servicePort}")
+    private int servicePort;
+
+    @Value("${app.nginx.annotationKey}")
+    private String nginxAnnotationKey;
+
+    @Value("${app.nginx.annotationValue}")
+    private String nginxAnnotationValue;
+
     private static final String APP_LABEL = "app";
-    private static final String INGRESS_NAMESPACE = "default";
-    private static final String INGRESS_NAME = "nginx-gateway";
     private static final String DEFAULT_PROTOCOL = "TCP";
     private static final String PATH_TYPE = "Prefix";
-    private static final int SERVICE_PORT = 80;
+    private static final String DEFAULT_INGRESS_CON_NAME = "ingress-nginx-controller";
 
     private final DefaultKubernetesClient client;
+
+    public String getIngressPublicUrl() {
+        List<Service> services = client.services().inAnyNamespace().list().getItems();
+        Optional<Service> optional = services.stream().filter(s -> DEFAULT_INGRESS_CON_NAME.equals(s.getMetadata().getName())).findAny();
+        if (!optional.isPresent()) {
+            return null;
+        }
+
+        Service service = optional.get();
+        return service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
+    }
 
     public Namespace getOrCreateNamespace(String name) {
         List<Namespace> namespaces = client.namespaces().list().getItems();
@@ -70,11 +98,11 @@ public class KubernetesRepository {
             if (paths.isEmpty()) {
                 log.info("Empty path for ingress, delete ingress");
                 client.network().v1().ingresses()
-                        .inNamespace(INGRESS_NAMESPACE)
+                        .inNamespace(ingressNamespace)
                         .delete(ingress);
             } else {
                 client.network().v1().ingresses()
-                        .inNamespace(INGRESS_NAMESPACE)
+                        .inNamespace(ingressNamespace)
                         .createOrReplace(ingress);
             }
         }
@@ -83,29 +111,30 @@ public class KubernetesRepository {
     private Ingress createIngress(String serviceName) {
         Ingress ingress = new IngressBuilder()
                 .withNewMetadata()
-                    .withName(INGRESS_NAME)
-                    .addToLabels(APP_LABEL, INGRESS_NAME)
+                .withName(ingressName)
+                .addToLabels(APP_LABEL, ingressName)
+                .addToAnnotations(nginxAnnotationKey, nginxAnnotationValue)
                 .endMetadata()
                 .withNewSpec()
-                    .addNewRule()
-                        .withNewHttp()
-                            .addNewPath()
-                                .withPath("/" + serviceName)
-                                .withPathType(PATH_TYPE)
-                                .withNewBackend()
-                                    .withNewService()
-                                        .withName(serviceName)
-                                        .withNewPort()
-                                            .withNumber(SERVICE_PORT)
-                                        .endPort()
-                                    .endService()
-                                .endBackend()
-                            .endPath()
-                        .endHttp()
-                    .endRule()
+                .addNewRule()
+                .withNewHttp()
+                .addNewPath()
+                .withPath("/" + serviceName + "(/|$)(.*)")
+                .withPathType(PATH_TYPE)
+                .withNewBackend()
+                .withNewService()
+                .withName(serviceName)
+                .withNewPort()
+                .withNumber(servicePort)
+                .endPort()
+                .endService()
+                .endBackend()
+                .endPath()
+                .endHttp()
+                .endRule()
                 .endSpec()
                 .build();
-        return client.network().v1().ingresses().inNamespace(INGRESS_NAMESPACE).createOrReplace(ingress);
+        return client.network().v1().ingresses().inNamespace(ingressNamespace).createOrReplace(ingress);
     }
 
     private Ingress addService2Ingress(Ingress ingress, String serviceName) {
@@ -113,7 +142,7 @@ public class KubernetesRepository {
         List<HTTPIngressPath> paths = rules.get(0).getHttp().getPaths();
 
         ServiceBackendPort serviceBackendPort = new ServiceBackendPort();
-        serviceBackendPort.setNumber(SERVICE_PORT);
+        serviceBackendPort.setNumber(servicePort);
 
         IngressServiceBackend ingressServiceBackend = new IngressServiceBackend();
         ingressServiceBackend.setName(serviceName);
@@ -129,65 +158,65 @@ public class KubernetesRepository {
         paths.add(newPath);
 
         return client.network().v1().ingresses()
-                .inNamespace(INGRESS_NAMESPACE)
+                .inNamespace(ingressNamespace)
                 .createOrReplace(ingress);
     }
 
     public IngressList getIngressList() {
         return client.network().v1().ingresses()
-                .inNamespace(INGRESS_NAMESPACE)
-                .withLabel(APP_LABEL, INGRESS_NAME)
+                .inNamespace(ingressNamespace)
+                .withLabel(APP_LABEL, ingressName)
                 .list();
     }
 
-    public Deployment deployDeployment(String namespace, String serviceName, String image, int servicePort) {
+    public Deployment deployDeployment(String namespace, String serviceName, String image) {
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
-                    .withName(serviceName)
-                    .addToLabels(APP_LABEL, serviceName)
+                .withName(serviceName)
+                .addToLabels(APP_LABEL, serviceName)
                 .endMetadata()
                 .withNewSpec()
-                    .withReplicas(1)
-                    .withNewTemplate()
-                        .withNewMetadata()
-                        .addToLabels(APP_LABEL, serviceName)
-                        .endMetadata()
-                        .withNewSpec()
-                            .addNewContainer()
-                                .withName(serviceName)
-                                .withImage(image)
-                                .addNewPort()
-                                    .withContainerPort(servicePort)
-                                    .withProtocol(DEFAULT_PROTOCOL)
-                                .endPort()
-                            .endContainer()
-                        .endSpec()
-                    .endTemplate()
-                    .withNewSelector()
-                        .addToMatchLabels(APP_LABEL, serviceName)
-                    .endSelector()
+                .withReplicas(1)
+                .withNewTemplate()
+                .withNewMetadata()
+                .addToLabels(APP_LABEL, serviceName)
+                .endMetadata()
+                .withNewSpec()
+                .addNewContainer()
+                .withName(serviceName)
+                .withImage(image)
+                .addNewPort()
+                .withContainerPort(containerPort)
+                .withProtocol(DEFAULT_PROTOCOL)
+                .endPort()
+                .endContainer()
+                .endSpec()
+                .endTemplate()
+                .withNewSelector()
+                .addToMatchLabels(APP_LABEL, serviceName)
+                .endSelector()
                 .endSpec()
                 .build();
         return client.apps().deployments().inNamespace(namespace).create(deployment);
     }
 
-    public void deployService(String namespace, String serviceName, int containerPort) {
+    public void deployService(String namespace, String serviceName) {
         ServicePort servicePort = new ServicePort();
         servicePort.setProtocol(DEFAULT_PROTOCOL);
-        servicePort.setPort(SERVICE_PORT);
-        servicePort.setTargetPort(new IntOrString(containerPort));
+        servicePort.setPort(this.servicePort);
+        servicePort.setTargetPort(new IntOrString(this.containerPort));
 
         Map<String, String> selectors = new HashMap<>();
         selectors.put(APP_LABEL, serviceName);
 
         Service service = new ServiceBuilder()
                 .withNewMetadata()
-                    .withName(serviceName)
-                    .addToLabels(APP_LABEL, serviceName)
+                .withName(serviceName)
+                .addToLabels(APP_LABEL, serviceName)
                 .endMetadata()
                 .withNewSpec()
-                    .withSelector(selectors)
-                    .withPorts(servicePort)
+                .withSelector(selectors)
+                .withPorts(servicePort)
                 .endSpec()
                 .build();
         client.services().inNamespace(namespace).create(service);
@@ -197,8 +226,8 @@ public class KubernetesRepository {
         return client.apps().deployments()
                 .inNamespace(namespace)
                 .withName(serviceName).edit(d -> new DeploymentBuilder(d).editSpec()
-                .withReplicas(numberOfReplicas)
-                .endSpec().build());
+                        .withReplicas(numberOfReplicas)
+                        .endSpec().build());
     }
 
     public Boolean deleteDeployment(String namespace, String serviceName) {
