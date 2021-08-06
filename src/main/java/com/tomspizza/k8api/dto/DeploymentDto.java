@@ -1,5 +1,6 @@
 package com.tomspizza.k8api.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
@@ -14,6 +15,7 @@ import java.util.Objects;
 
 @Getter
 @Setter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class DeploymentDto extends K8sDto {
     private String image;
     private String deployed;
@@ -32,7 +34,7 @@ public class DeploymentDto extends K8sDto {
         Container container = containers.get(0);
         this.image = container.getImage();
         this.deployed = metadata.getCreationTimestamp();
-        this.url = String.join("/", url, metadata.getName());
+        this.url = (url == null ? null : String.join("/", url, metadata.getName()));
 
         DeploymentStatus status = deployment.getStatus();
         this.replicas = Objects.isNull(status.getReplicas()) ? 0 : status.getReplicas();

@@ -28,19 +28,22 @@ public class KubernetesController {
 
     @ResponseBody
     @PostMapping("/deploy")
-    public void deploy(@RequestBody DeployDto deployDto) {
+    public String deploy(@RequestBody DeployDto deployDto) {
         kubernetesService.deploy(deployDto);
+        return "Success";
     }
 
     @ResponseBody
     @PostMapping("/scale")
-    public void scale(@RequestBody ScaleDto scaleDto) {
+    public String scale(@RequestBody ScaleDto scaleDto) {
         kubernetesService.scale(scaleDto);
+        return "Success";
     }
 
     @ResponseBody
     @PostMapping("/delete")
-    public void delete(@RequestBody K8sDto k8sDto) {
+    public String delete(@RequestBody K8sDto k8sDto) {
         kubernetesService.delete(k8sDto);
+        return "Success";
     }
 }

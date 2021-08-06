@@ -42,8 +42,13 @@ public class KubernetesRepository {
     private static final String DEFAULT_PROTOCOL = "TCP";
     private static final String PATH_TYPE = "Prefix";
     private static final String DEFAULT_INGRESS_CON_NAME = "ingress-nginx-controller";
+    private static final String SUFFIX_PATH = "(/|$)(.*)";
 
     private final DefaultKubernetesClient client;
+
+    private String buildFullPath(String serviceName) {
+        return "/" + serviceName + SUFFIX_PATH;
+    }
 
     public String getIngressPublicUrl() {
         List<Service> services = client.services().inAnyNamespace().list().getItems();
@@ -94,7 +99,7 @@ public class KubernetesRepository {
             Ingress ingress = ingresses.get(0);
             List<IngressRule> rules = ingress.getSpec().getRules();
             List<HTTPIngressPath> paths = rules.get(0).getHttp().getPaths();
-            paths.removeIf(p -> p.getPath().equals("/" + serviceName));
+            paths.removeIf(p -> p.getPath().equals(buildFullPath(serviceName)));
             if (paths.isEmpty()) {
                 log.info("Empty path for ingress, delete ingress");
                 client.network().v1().ingresses()
@@ -119,7 +124,7 @@ public class KubernetesRepository {
                 .addNewRule()
                 .withNewHttp()
                 .addNewPath()
-                .withPath("/" + serviceName + "(/|$)(.*)")
+                .withPath(buildFullPath(serviceName))
                 .withPathType(PATH_TYPE)
                 .withNewBackend()
                 .withNewService()
@@ -152,7 +157,7 @@ public class KubernetesRepository {
         ingressBackend.setService(ingressServiceBackend);
 
         HTTPIngressPath newPath = new HTTPIngressPath();
-        newPath.setPath("/" + serviceName);
+        newPath.setPath(buildFullPath(serviceName));
         newPath.setPathType(PATH_TYPE);
         newPath.setBackend(ingressBackend);
         paths.add(newPath);

@@ -31,7 +31,7 @@ public class KubernetesService {
     public List<DeploymentDto> getAllDeployments() {
         List<Deployment> deployments = kubernetesRepository.getDeployments();
         String url = kubernetesRepository.getIngressPublicUrl();
-        String uri = String.format("%s://%s", urlSchema, url);
+        String uri = (url == null ? null : String.format("%s://%s", urlSchema, url));
         return deployments.stream().map(d -> new DeploymentDto(d, uri)).collect(Collectors.toList());
     }
 
